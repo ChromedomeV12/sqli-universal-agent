@@ -1,0 +1,40 @@
+{
+  "name": "sqli-tutor",
+  "version": "1.0.0",
+  "description": "An interactive Socratic tutor for SQL injection that analyzes vulnerabilities and guides users using a secure sandbox.",
+  "author": "Gemini Developer",
+  "skills": {
+    "run-oracle": {
+      "description": "Executes the sqli_final.py script to scan a specific target and update the vulnerability_profile.json.",
+      "path": "skills/run-oracle/SKILL.md"
+    },
+    "test-payload": {
+      "description": "Executes a user's SQL injection payload against a URL using curl, returning the response for analysis.",
+      "path": "skills/test-payload/SKILL.md"
+    },
+    "run-sqlmap": {
+      "description": "Uses sqlmap to automate the discovery and extraction of database information.",
+      "path": "skills/run-sqlmap/SKILL.md"
+    },
+    "browser-control": {
+      "description": "Uses Playwright CLI to interact with the target in a browser, acting as a manual injection tool (HackBar).",
+      "path": "skills/browser-control/SKILL.md"
+    },
+    "open-in-firefox": {
+      "description": "Launches the local Firefox browser (with HackBar V2) at a specific lesson URL.",
+      "path": "skills/open-in-firefox/SKILL.md"
+    },
+    "run-burp-scan": {
+      "description": "Initiates an automated active scan on a target URL using the Burp Suite Professional REST API.",
+      "path": "skills/run-burp-scan/SKILL.md"
+    },
+    "get-burp-issues": {
+      "description": "Retrieves the status and vulnerabilities found by a specific Burp Suite scan task.",
+      "path": "skills/get-burp-issues/SKILL.md"
+    },
+    "run-sqlmap-request": {
+      "description": "Runs sqlmap on a raw HTTP request file exported from Burp Suite.",
+      "path": "skills/run-sqlmap-request/SKILL.md"
+    }
+  }
+}

