@@ -1,0 +1,58 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "model": "opencode/claude-sonnet-4-6",
+    "mcp": {
+        "context7": {
+            "type": "remote",
+            "url": "https://mcp.context7.com/mcp",
+            "headers": {
+                "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+            },
+            "enabled": true
+        },
+        "sqli-tools": {
+            "type": "local",
+            "command": [
+                "/home/chrom/sqli-universal-agent/venv/bin/python",
+                "/home/chrom/sqli-universal-agent/mcp/sqli_mcp.py"
+            ]
+        },
+        "filesystem": {
+            "type": "local",
+            "command": [
+                "npx",
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "/home/chrom/sqli-universal-agent"
+            ]
+        }
+    },
+    "agent": {
+        "sql-auditor": {
+            "mode": "all",
+            "model": "opencode/qwen3.6-plus",
+            "permission": {
+                "mcp_sqli-tools": "allow",
+                "mcp_filesystem": "allow",
+                "bash": "allow"
+            }
+        },
+        "researcher": {
+            "mode": "all",
+            "model": "opencode/kimi-k2.5",
+            "permission": {
+                "websearch": "allow",
+                "mcp_context7": "allow",
+                "mcp_filesystem": "allow"
+            }
+        }
+    },
+    "permission": {
+        "websearch": "allow",
+        "lsp": "allow",
+        "edit": "allow",
+        "task": {
+            "*": "allow"
+        }
+    }
+}
