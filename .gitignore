@@ -1,0 +1,23 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.class
+
+# Environment/Secrets
+.env
+session_cache.json
+
+# Tooling/Temp
+.opencode/
+*.bak
+*.tmp
+temp_lesson_*.json
+order*.png
+lesson*_dump.png
+fail_breakout.png
+success_breakout.png
+screenshot.png
+
+# Evidence (Optional - exclude if you only want to share code)
+# lab_reports/
