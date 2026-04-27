@@ -1,160 +1,57 @@
-# Learning Reflection: What 65 Days of Broken Scans Actually Taught Me
+# Learning Reflection
 
-**Author:** Maozheng Chen
-**Date:** 2026-04-19
-**Duration:** February to April 2026, roughly 65 working days
+The thing that surprised me most about this project is how much of it was about reading.
 
----
+Reading my own log output. Reading `curl -v`. Reading the first line of a sqlmap binary I had never opened before. Reading the same `vulnerability_profile.json` from three different directions and noticing that the field names matter more than the code that writes them. Going in, I assumed I was going to spend my time writing payloads and tweaking regex. The payloads were the easy part. The reading was where everything that actually changed my thinking happened.
 
-The number I remember is not 30 out of 30. It is 18.
-
-When the scanner ran all 30 lessons for the first time, it got 18. Twelve lessons failed. Some of the failures were obvious after five minutes of reading the logs. Others took days. At the time, 18 felt like a problem. Looking back, the 12 failures were where most of the actual learning happened.
+This document is six honest things I learned. They are not sequenced by importance, they are sequenced by when I figured them out, which is a different order, because the small things came first and the big ones snuck up on me later.
 
 ---
 
-## What I thought I was building vs. what I was actually building
+The very first lesson came from the 502 Bad Gateway. The container was up. Ping went through in 1ms. `curl http://172.17.59.5/` returned 502 Bad Gateway. I spent maybe twenty minutes assuming I had broken Docker. I had not. Adding `-v` to the same curl command revealed the actual fault on the third line: `Uses proxy env variable http_proxy == 'http://127.0.0.1:7897'`. A VPN client on my Windows host had set a system-wide HTTP proxy. Every outbound request, including requests to a docker bridge IP that lived on the same machine I was sitting at, was being shipped through a proxy that had no idea what to do with internal addresses. The proxy gave up and returned 502.
 
-The project description said: build an AI-assisted SQLi scanner that covers all 30 SQLi-Labs lessons. That is what I thought I was doing.
+What I learned from that incident is not "always use `-v`," although that is true. The real lesson is that my mental model of the network was not the network. I thought I was talking to the container directly. I was not. There was a layer between me and the container that I had never installed, never configured, and could not see; that layer was the entire problem. From that day on, I check the verbose flag *before* I read my own code. Not because my code is fine, but because if my model of the environment is wrong, no amount of staring at my code will tell me anything useful.
 
-What I was actually building was a distributed system -- scanner subprocess, MCP server process, AI model, file-based shared state, browser automation, and an orchestrator that tied it together. Each of those components had its own failure modes. Most of those failure modes were invisible until they collided with each other.
+The second lesson came shortly after, and it was about marker design. I almost wrote a UNION reflection check that searched the response HTML for the digits `1`, `2`, and `3`. I had even started typing it. The thing that stopped me was looking at a default Apache 2.4.7 page and noticing the digit "2" sitting there in the version string. A reflection check on `2` would have returned true on every lesson, including the ones where the injection failed. I would have built a false-positive engine and not realised it for days.
 
-The `vulnerability_profile.json` overwrite issue is a clean example. The scanner itself worked perfectly. Write one lesson's data to a JSON file -- that's a single Python function, two lines. It worked every time I tested it manually. What I had not tested was 30 sequential calls from the orchestrator, where each call's `json.dump(all_scan_results, f, indent=4)` with mode `"w"` erased everything from the previous call. The scanner worked. The system did not. Those are different problems.
+The fix was the strings `gemini1`, `gemini2`, `gemini3`, hex-encoded so they bypass closure-aware quoting. None of those strings appear naturally on the web. If the response contains `gemini2`, the UNION ran and column 2 reflected. The check is not merely probably right, it cannot be wrong in the false-positive direction. The whole structure of the scanner relies on detection methods that are *adversarially designed*: they would produce a hit if and only if the injection actually worked, no matter what nonsense the page already contains. That is a different design discipline than the one I came in with. I had been writing detectors that mostly work. After this, I started writing detectors that I could prove are right.
 
-I suspect this distinction -- between a component working and a system working -- is where a lot of people get stuck when they move from writing scripts to writing tools that other tools depend on.
+The third lesson is harder to summarise because it is about a category of error I had not seen before. There is a kind of bug where the scanner is "right" at a function level and "wrong" at a system level. The clearest example was the writing of `vulnerability_profile.json`. The function that wrote it worked perfectly when I tested it in isolation. The function that wrote it also overwrote the entire file every time it was called. When I ran the orchestrator across all 30 lessons in sequence, each lesson's write erased the previous one, and the final file contained only Lesson 30. The orchestrator's success report read "29 FAILED, 1 PASSED": accurate to the file, not to reality.
 
----
+I want to be careful about how I frame this, because the cleanup is obvious in retrospect. Read the existing file, merge new results, write back. Five lines of code. The reason I missed it for as long as I did is that I had been thinking of the scanner as a script (input, output, done) rather than as a component in a larger system that runs sequentially and shares state through a file. Single-process logic and multi-process logic diverge at exactly that point. Once a file is read by more than one caller, it is no longer output. It is state. State has rules I had not internalised: read before you write, merge instead of overwrite, handle the case where the file does not exist or is corrupted, and never assume your call is the only one that touched it. It feels obvious when written down. It was not obvious when I was writing the original code.
 
-## The proxy incident was not about networking
-
-The first real obstacle was the 502 Bad Gateway error. My instinct was to check if the Docker container was running. It was. Then I checked if the web server inside it was responding. It was. The `curl` request still returned 502.
-
-Running `curl -v` showed the actual path the request took:
-
-```
-* Uses proxy env variable http_proxy == 'http://127.0.0.1:7897'
-```
-
-A VPN client on my Windows host had set a system-wide HTTP proxy. Every network request, including requests to the internal Docker subnet at `172.17.59.5`, routed through it. The proxy did not know what to do with a private subnet address. It returned 502.
-
-The technical fix was two lines: `trust_env = False` and explicit `proxies={"http": None, "https": None}`. That is not the interesting part.
-
-The interesting part is that I spent about 30 minutes assuming the problem was in my code before I ran the verbose flag. The environment was wrong, not the code. You can review `scan_get()` ten times and never find the bug if the bug is in the network stack below your code.
-
-After that day, I started treating the environment as a variable rather than a constant. Before debugging any failure, check what the actual HTTP request looks like at the wire level. Check what process is actually being called. Check whether the file you think exists actually exists. Do not assume the environment matches your mental model of it.
-
----
-
-## The backtick-n corruption: how the same bug can be unfixable
-
-There is a syntax error that appeared in `sqli_final.py` four separate times over the course of the project. It looked like this:
+The fourth lesson came out of the Gemini-CLI to OpenCode migration, and it is about portability. The first version of the orchestrator contained this line:
 
 ```python
-for c in closures: `n                print(f"[*] Testing POST closure: {c}...") `n ...
+SQLMAP_PATH = r"C:\Users\chrom\AppData\Roaming\Python\Python313\Scripts\sqlmap.exe"
 ```
 
-The characters `` `n `` are not Python. They do not mean anything in Python. An AI editing tool was converting newline escape sequences (`\n`) in multi-line string arguments into the literal two-character sequence backtick-n, and collapsing the result onto one line. The Python parser rejected it with `SyntaxError: invalid syntax`.
+That ran without complaint on my Windows machine for a month. Moving the project to Ubuntu broke it instantly, and that line was only the start; there were six more like it across `auto_orchestrator.py` and `sqli_final.py`. The hardcoded path was the obvious failure. The less obvious one was `subprocess.run(..., shell=True)` with an embedded URL. Inside the URL was a SQL payload containing the word `ORDER`. On Windows, `cmd.exe` parses the string one way; on Linux, `bash` parses it another way; specifically, bash split the URL at a quote boundary and treated `ORDER` as a separate command-line option to Playwright. The error I got was `playwright screenshot: error: unknown option: 'ORDER'`. It took me longer than I want to admit to connect that error message to the `shell=True` argument three lines up.
 
-I fixed it the first time. Fixed it the second time. Fixed it the third time. The fourth time I was certain I had understood the root cause and it would not happen again. It happened again.
+What this taught me, in practice, is that "works on my machine" is a load-bearing description of fragility, not a description of correctness. The thing I now do, more or less reflexively, is replace `shell=True` with a list of arguments and replace any hardcoded path with `shutil.which()`. Both changes are essentially free. Both changes prevent a category of bug I no longer have to think about. The cost of writing portable Python is roughly zero; the cost of *not* writing it is a day of debugging the first time you change machines. I would have happily believed the opposite a year ago.
 
-The correct response, it turns out, is not to find the "right" way to fix it permanently. It is to accept that some tools introduce errors systematically and build a detection step that runs faster than the errors accumulate. An AST syntax check on the file takes under 0.1 seconds:
+The fifth lesson is about AI tools, since the project was built with several of them. Gemini CLI in February. Various Anthropic models through the bulk of the work. Opencode running Sonnet, Qwen, and Kimi for the WSL2 rewrite. Multiple platforms; one project; the same author at the keyboard.
 
-```python
+I want to be careful here because the tools are good, and "AI tools are good" is a very boring observation. The interesting part is what happened when the tool was wrong. Twice, on two different days, an AI editing tool replaced `\n` newline escapes in my code with the literal characters backtick-n while writing a multi-line string. The output was a syntactically invalid Python file with a `SyntaxError` on whichever line had been most recently edited. I caught it the first time because I happened to run the file. The second time I caught it through a habit I picked up after the first incident, which was to run an AST parse check after any edit:
+
+```bash
 python3 -c "import ast; ast.parse(open('core/sqli_final.py').read()); print('OK')"
 ```
 
-I run this now after any edit to any of the five core files. If it fails, I know immediately. If it passes, I know the file is at least syntactically valid. The tool is still broken in the same way. The mitigation is just faster than the problem.
+That check costs 0.1 seconds. It catches the entire class of "AI tool produced text that looks right but isn't." I now run it as muscle memory after any non-trivial edit, regardless of who wrote it. Not because AI tools are uniquely bad (humans introduce typos too), but because the failure mode of AI-generated code is specifically that it looks fluent, which means I cannot catch it by skimming. The verifier has to be deterministic, fast, and external. AST parsing is all three.
 
-There is probably a broader lesson here about systems that include AI-generated code. The AI is not malicious. It is not failing. It is just systematically wrong in a specific narrow pattern. You cannot fix the AI. You can add a check that catches what it gets wrong.
+The deeper observation is that AI tools magnify whatever discipline you bring to a project. When I asked a well-formed question ("here is the error, here is the surrounding code, here is what I tried"), the answer was usually correct and saved me time. When I asked a vague question ("why is this lesson failing?" without showing the log), the answer was confident, plausible, and wrong. The tool is a force multiplier. It multiplies good engineering and bad engineering alike. The thing I cannot delegate is the engineering. I can delegate typing.
 
----
+The sixth lesson is the one I am least sure I have a handle on, so I'll hedge accordingly. The framework supports two operating modes: a direct audit mode that returns the full technical profile and dumps credentials, and a Socratic mode that returns the same underlying data wrapped in questions and hints. Building both modes was technically straightforward; deciding what they should do was not.
 
-## Moving from single-process thinking to shared-state thinking
+The Socratic tutor and the credential dumper read from the same `vulnerability_profile.json`. They cannot disagree about what Lesson 1's closure is, because they both look at the same field. What they disagree about is what to *show*. The auditor returns `{"closure": "'"}`, while the tutor produces a paragraph that ends with "what happens to the response when you append a single quote to the parameter?" The information is identical. The presentation is different. The presentation, it turns out, is the part that matters for whether the tool helps anyone learn.
 
-The merge-write race condition was the most instructive failure, partly because I understand exactly why I did not anticipate it.
+What I have not figured out is how to draw the line. A student who genuinely wants to learn benefits from the Socratic version. A student who wants the answer fast can ignore the Socratic version, ask the auditor directly, and get the closure character in a single MCP call. The tool cannot tell those two students apart, and neither can I, and I do not think that distinction can be solved at the tool layer. It has to be solved by the student deciding what they actually want; that is not something I, or the framework, can enforce.
 
-When you write a function, you think about inputs and outputs. The function takes a lesson number, scans it, writes the result to a file, done. That reasoning is correct when you run the function once. It breaks when 30 orchestrator calls run the function sequentially, each one overwriting what the previous call wrote.
-
-The file `vulnerability_profile.json` is not just output. It is shared state. It is read by the orchestrator to decide what to do next. It is read by the MCP server to respond to AI queries. It is read by the Socratic tutor to generate lesson guidance. Every component that reads it depends on every component that writes it doing so correctly.
-
-Shared state has rules. You have to read before you write. You have to merge, not overwrite. You have to handle the case where the file does not exist yet or contains corrupted data. None of this is obvious when you are thinking about a single function call.
-
-```python
-existing = {}
-if os.path.exists(JSON_FILE):
-    try:
-        with open(JSON_FILE, "r") as f:
-            existing = json.load(f)
-    except (json.JSONDecodeError, IOError):
-        existing = {}
-existing.update(all_scan_results)
-with open(JSON_FILE, "w") as f:
-    json.dump(existing, f, indent=4)
-```
-
-This is not difficult code. It is about 10 lines. What it requires is thinking about the file from the perspective of every caller, not just the one you are currently writing.
+I believe, with some uncertainty, that this is fine. The Socratic mode exists for the people who want it. It does not exist to be the only path; it exists to be the path you take when you are trying to understand something rather than finish it. The same scanner backs both. The contract is honest in both directions. I think this is the right shape, but I would not be surprised to discover, two years from now, that I am wrong about that and the tutor needs more friction or none at all.
 
 ---
 
-## Portability: the thing you do not think about until you migrate
+If I had to compress all six of these into a single sentence, it would be that the build was an exercise in becoming the kind of programmer who reads what is in front of them more carefully than I started out doing. The 502 was readable. The doubled keyword `selselectect` was readable. The shebang line of `/usr/local/bin/sqlmap` is one line of text. None of these debugging moments required me to be smarter. They required me to slow down and look at what was actually there, instead of what I expected to be there.
 
-I ran the scanner on Windows for two months. It worked. I moved to Ubuntu WSL2. Six things broke immediately.
-
-The most instructive was `shell=True`. On Windows, `subprocess.run(cmd, shell=True)` passes `cmd` to `cmd.exe`. On Linux, it passes to `bash`. Their quote-parsing rules are different. A command string containing SQL injection payloads -- which often include single quotes, double quotes, parentheses, and dashes -- would be parsed differently by the two shells. On Linux, what appeared to be a valid URL argument would be split at the quote characters into separate arguments that Playwright did not recognize.
-
-The error message was something like `playwright screenshot: error: unknown option: 'ORDER'`. The word `ORDER` appeared because it was part of the SQL payload in the URL, and bash had split the quoted string at the wrong point. It took a while to connect that error message back to the `shell=True` call that caused it.
-
-```python
-# What I had
-subprocess.run(f'npx.cmd playwright screenshot "{test_url}" {viz_path}', shell=True)
-
-# What I needed
-subprocess.run(["npx", "playwright", "screenshot", test_url, viz_path], capture_output=True)
-```
-
-List-based subprocess calls do not go through a shell. Each list element is one argument. SQL characters in the URL are just characters. No shell parses them.
-
-After fixing this, I audited every subprocess call in the codebase for `shell=True` and converted all of them. There were six.
-
----
-
-## On AI assistance and what it actually does
-
-Claude Sonnet, Qwen, and Kimi were used throughout this project. They wrote large amounts of the code, identified several bugs I had missed, and analyzed log files I did not have time to read carefully.
-
-They also introduced the `` `n `` corruption four times and occasionally produced code that was syntactically valid but logically wrong in ways that took hours to find.
-
-The pattern I noticed: when I brought a well-formed question -- "here is the error, here is the relevant code, here is what I tried" -- the AI gave useful answers. When I brought an ill-formed question -- "why is this lesson failing?" without the log output -- the AI gave plausible-sounding answers that were wrong.
-
-AI assistance appears to scale with the quality of the question. If you understand the problem well enough to describe it precisely, the AI can often solve it faster than you can. If you do not understand the problem yet, the AI's answer may point you in a wrong direction confidently.
-
-This is not a criticism. It is a description of how the tool actually behaves in practice. The implication is that you still need to understand what you are building well enough to evaluate whether the AI's output is correct. You cannot outsource that evaluation.
-
----
-
-## The Socratic mode question
-
-This project implemented two operating modes: direct audit, which returns full technical data immediately, and Socratic guidance, which returns questions and hints constructed from the same underlying data.
-
-I spent some time thinking about whether a Socratic mode in a security tool is actually useful or whether it is just a feature that sounds educational without being so.
-
-My current view, which I hold with some uncertainty, is that it depends entirely on when you use it. If a student uses Socratic mode to understand how UNION injection works before they have tried anything, it is useful -- it gives them a guided path through the reasoning. If someone uses Socratic mode to avoid doing the work and just asks "what is the answer?" repeatedly until the hints converge on the payload, it is not useful at all.
-
-The tool cannot distinguish between those two users. That distinction is the user's responsibility, not the tool's. I built the mode. What it actually does depends on how you use it.
-
----
-
-## What the 65 days produced besides a scanner
-
-A list of things that are now habits, or close to habits:
-
-Run `python3 -c "import ast; ast.parse(open(f).read()); print('OK')"` after every file edit. Takes 0.1 seconds. Catches corruption before it reaches a test.
-
-Use list arguments for subprocess calls, never string commands. The cost is zero. The benefit is deterministic behavior across operating systems.
-
-Treat every file that more than one process writes to as shared state. Read before writing. Merge, do not overwrite. Handle missing and corrupt files explicitly.
-
-Check the network path before debugging the code. `curl -v` shows you what the request actually does. `trust_env = False` isolates your requests from system proxy settings.
-
-Test at the boundaries. The scanner worked on single-lesson runs. The race condition only appeared in batch runs. The MCP cascade only appeared with 20 concurrent calls. Some bugs only exist in conditions you do not test until production.
-
-None of these are novel observations. They are standard practices in any production software context. It took breaking things repeatedly in specific ways for them to become practical knowledge rather than abstract advice.
+I am not sure I can fully take that lesson away as a habit. I know I picked up some smaller habits: the AST check after edits, the verbose flag before the source code, the `shutil.which` instead of the absolute path. Whether those habits aggregate into the broader skill of reading carefully, I do not know yet. Ask me again in a year, on a different project, and we'll see whether they survived contact with a deadline.

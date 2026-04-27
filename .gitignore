@@ -9,7 +9,6 @@ __pycache__/
 session_cache.json
 
 # Tooling/Temp
-.opencode/
 *.bak
 *.tmp
 temp_lesson_*.json
@@ -19,5 +18,13 @@ fail_breakout.png
 success_breakout.png
 screenshot.png
 
-# Evidence (Optional - exclude if you only want to share code)
+# OpenCode: Core Logic (Excluding AI Context)
+.opencode/
+core/*_convo.json
+node_modules/
+final_deliverables/Humanization/
+final_deliverables/Reference\ Essay/
+opencode-session.md*
+
+# Evidence
 # lab_reports/
