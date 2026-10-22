@@ -1,4 +1,5 @@
-from mcp.server.fastmcp import FastMCP
+# mcp 2.x: FastMCP was renamed to MCPServer (see py.sdk.modelcontextprotocol.io migration guide).
+from mcp.server.mcpserver import MCPServer
 import subprocess
 import sys
 import json
@@ -9,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-mcp = FastMCP("SQLi-Universal-Tutor")
+mcp = MCPServer("SQLi-Universal-Tutor")
 
 # Resolve paths from this file's location — immune to $HOME and cwd changes
 _PROJECT_ROOT = Path(__file__).parent.parent

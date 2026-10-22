@@ -1,5 +1,9 @@
 # Universal SQLi Agent Toolkit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CodeQL](https://github.com/ChromedomeV12/sqli-universal-agent/actions/workflows/codeql.yml/badge.svg)](https://github.com/ChromedomeV12/sqli-universal-agent/actions/workflows/codeql.yml)
+[![pip-audit](https://github.com/ChromedomeV12/sqli-universal-agent/actions/workflows/pip-audit.yml/badge.svg)](https://github.com/ChromedomeV12/sqli-universal-agent/actions/workflows/pip-audit.yml)
+
 A high-performance, multi-agent security audit framework for SQL injection, built on the **Model Context Protocol (MCP)**. This toolkit achieved a **100% success rate** on the SQLi-Labs benchmark (Lessons 1-30).
 
 ## 🚀 Key Features

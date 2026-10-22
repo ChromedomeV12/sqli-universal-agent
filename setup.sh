@@ -37,7 +37,7 @@ curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$PIP_TMP/get-pip.py"
 rm -rf "$PIP_TMP"
 
 echo "[*] Installing project dependencies..."
-./venv/bin/pip install -r requirements.txt playwright
+./venv/bin/pip install -r requirements.txt
 
 # 4. Playwright Setup
 echo "[*] Installing Playwright Browsers..."
