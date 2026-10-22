@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Project SQLi-Universal: Master Setup Script
 # Targets: Ubuntu WSL2
@@ -30,9 +31,10 @@ fi
 # 3. Python Environment
 echo "[*] Setting up Python Virtual Environment..."
 python3 -m venv venv --without-pip
-curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-./venv/bin/python3 get-pip.py
-rm get-pip.py
+PIP_TMP="$(mktemp -d)"
+curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$PIP_TMP/get-pip.py"
+./venv/bin/python3 "$PIP_TMP/get-pip.py"
+rm -rf "$PIP_TMP"
 
 echo "[*] Installing project dependencies..."
 ./venv/bin/pip install -r requirements.txt playwright
@@ -41,10 +43,6 @@ echo "[*] Installing project dependencies..."
 echo "[*] Installing Playwright Browsers..."
 ./venv/bin/python3 -m playwright install chromium
 
-# 5. OpenCode Config Symlink
-if [ ! -L opencode.json ]; then
-    echo "[*] Creating OpenCode configuration symlink..."
-    ln -sf configs/opencode.json opencode.json
-fi
+echo "[*] opencode.json ships with the repository; edit it in place if you change agents or MCP servers."
 
 echo "[+] Setup Complete! Please run 'source ~/.bashrc' and then 'opencode .'"

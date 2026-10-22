@@ -6,6 +6,8 @@ __pycache__/
 
 # Environment/Secrets
 .env
+.burp_key
+**/.burp_key
 session_cache.json
 
 # Tooling/Temp
@@ -28,3 +30,6 @@ opencode-session.md*
 
 # Evidence
 # lab_reports/
+
+# Session transcripts
+final_deliverables_session.md

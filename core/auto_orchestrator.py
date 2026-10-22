@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import re
 import time
 import argparse
 import sys
@@ -79,6 +80,12 @@ def automate_lesson(lesson_num, master_data, dry_run=False):
     # 4. Visual Capture
     viz_path = str(dirs["visuals"] / "auto_breakout.png")
     closure = lesson_data.get('closure', "")
+    # Defense-in-depth: `closure` and `parameter` come from the scanner's read
+    # of an (at least theoretically attacker-influenced) target, so refuse to
+    # build URLs or CLI args from anything that is not a plain quote/paren combo.
+    if not re.fullmatch(r"['\"()]{0,4}", closure):
+        print(f"[-] Lesson {lesson_num}: suspicious closure value {closure!r}; aborting automation for this lesson.")
+        return False
     if dry_run:
         print("[DRY-RUN] Skipping visual capture.")
     elif lesson_data['method'] == "GET":
