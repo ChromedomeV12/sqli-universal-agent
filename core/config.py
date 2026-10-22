@@ -34,6 +34,28 @@ TARGET_IP = os.environ.get("TARGET_IP", "172.18.0.1")
 PROXY_HOST_IP = os.environ.get("PROXY_HOST_IP", "127.0.0.1")
 PROXY_PORT = os.environ.get("PROXY_PORT", "8080")
 
+# ---------------------------------------------------------------------------
+# 3b. Target scope guard
+# ---------------------------------------------------------------------------
+# This toolkit launches active injection payloads at TARGET_IP. Default to
+# refusing obvious mistakes (someone pointing it at a public address) unless
+# the operator explicitly overrides, because scanning systems you do not own
+# is illegal in most jurisdictions.
+import ipaddress as _ipaddress
+
+def _target_is_private() -> bool:
+    try:
+        return _ipaddress.ip_address(TARGET_IP).is_private
+    except ValueError:
+        return False
+
+if not _target_is_private() and os.environ.get("SQLI_ALLOW_ANY_TARGET") != "1":
+    print(
+        f"[config][!] WARNING: TARGET_IP '{TARGET_IP}' is not a private/"
+        "loopback address. Refusing implicit use; set SQLI_ALLOW_ANY_TARGET=1 "
+        "to scan this host anyway (only if you are authorized to test it)."
+    )
+
 # Derived URLs
 BASE_URL = f"http://{TARGET_IP}/"
 PROXY_URL = f"http://{PROXY_HOST_IP}:{PROXY_PORT}"
