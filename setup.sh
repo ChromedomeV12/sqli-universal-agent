@@ -32,6 +32,9 @@ fi
 # 3. Python Environment
 echo "[*] Setting up Python Virtual Environment..."
 python3 -m venv venv --without-pip
+# Playwright's Python wheel bundles Node; use only a verified patched host Node.
+PLAYWRIGHT_NODEJS_PATH="$(./venv/bin/python3 -c 'from core.node_runtime import configure_playwright_node; print(configure_playwright_node())')"
+export PLAYWRIGHT_NODEJS_PATH
 PIP_TMP="$(mktemp -d)"
 curl -fsSL https://bootstrap.pypa.io/get-pip.py -o "$PIP_TMP/get-pip.py"
 ./venv/bin/python3 "$PIP_TMP/get-pip.py"

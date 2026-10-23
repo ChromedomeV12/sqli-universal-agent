@@ -1,0 +1,39 @@
+name: Patched Node driver
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  node-driver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.12'
+      - run: bash -n setup.sh
+      - run: python -m unittest discover -s tests -v
+      - run: python -m pip install playwright==1.58.0
+      - name: Start and stop Playwright using the patched host Node
+        run: |
+          python - <<'PY'
+          import subprocess
+          import sys
+          from core.node_runtime import configure_playwright_node
+          from playwright._impl._driver import compute_driver_executable
+          from playwright.sync_api import sync_playwright
+          executable = configure_playwright_node()
+          assert compute_driver_executable()[0] == executable
+          print(subprocess.check_output([executable, '--version'], text=True).strip())
+          subprocess.run([sys.executable, '-m', 'playwright', '--version'], check=True)
+          with sync_playwright() as playwright:
+              assert playwright.chromium.name == 'chromium'
+          PY

@@ -17,6 +17,9 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 CORE_DIR      = _PROJECT_ROOT / "core"
 LAB_REPORTS_DIR = _PROJECT_ROOT / "lab_reports"
 
+sys.path.insert(0, str(_PROJECT_ROOT))
+from core.node_runtime import configure_playwright_node
+
 # ---------------------------------------------------------------------------
 # SSRF guard: navigation tools may only target the configured lab host.
 # Target responses carry attacker-controlled text; this allowlist plus the
@@ -94,6 +97,7 @@ def browser_test(url: str, payload: str, lesson_id: int) -> str:
     }
 
     try:
+        configure_playwright_node()
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
