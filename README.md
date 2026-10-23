@@ -79,6 +79,29 @@ sudo update-ca-certificates
 The requirements already pin `certifi==2026.10.19`. Updating repository files does
 not update a running host. See the [eMudhra advisory](https://render.com/docs/advisory-emudhra).
 
+### Playwright's embedded Node driver
+
+The Python Playwright wheel also includes a Node executable. The MCP browser
+entry point now verifies the host Node (or an explicit `PLAYWRIGHT_NODEJS_PATH`)
+and sets Playwright's supported override before launching the driver. Missing,
+old, or unrecognized Node versions fail with an error rather than using the
+wheel's bundled runtime. The orchestrator also checks its PATH Node before its
+`npx playwright` screenshot command. Install/select patched Node before setup.
+
+For direct Python Playwright commands outside these entry points, export the
+same override in the launch terminal before invoking Python:
+
+```bash
+export PLAYWRIGHT_NODEJS_PATH="$(./venv/bin/python -c 'from core.node_runtime import configure_playwright_node; print(configure_playwright_node())')"
+./venv/bin/python -m playwright --version
+```
+
+The setup script exports this override for its own browser installation; it
+cannot change the parent terminal environment. Restart MCP processes and set the
+override again in fresh terminals used for direct Playwright commands.
+
+Implementation reference: [Playwright Python 1.58.0 driver selection](https://github.com/microsoft/playwright-python/blob/v1.58.0/playwright/_impl/_driver.py).
+
 ## 📖 Academic Documentation
 
 Detailed research deliverables are available in the `final_deliverables/` folder:

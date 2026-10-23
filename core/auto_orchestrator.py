@@ -9,6 +9,7 @@ from pathlib import Path
 
 # Cross-platform configuration (single source of truth)
 sys.path.insert(0, str(Path(__file__).parent))
+from node_runtime import patched_node_executable
 from config import (
     SQLMAP_BIN as SQLMAP_PATH,
     PYTHON_BIN,
@@ -91,6 +92,7 @@ def automate_lesson(lesson_num, master_data, dry_run=False):
     elif lesson_data['method'] == "GET":
         test_url = f"{BASE_URL}Less-{lesson_num}/?id=1{closure} ORDER BY 1--+"
         print("[*] Capturing Visual Proof...")
+        patched_node_executable()
         subprocess.run(["npx", "playwright", "screenshot", test_url, viz_path], capture_output=True)
     else:
         print("[*] Skipping visual capture for non-GET lesson.")
