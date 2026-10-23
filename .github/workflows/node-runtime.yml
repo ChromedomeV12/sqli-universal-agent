@@ -26,12 +26,14 @@ jobs:
         run: |
           python - <<'PY'
           import subprocess
+          import sys
           from core.node_runtime import configure_playwright_node
           from playwright._impl._driver import compute_driver_executable
           from playwright.sync_api import sync_playwright
           executable = configure_playwright_node()
           assert compute_driver_executable()[0] == executable
           print(subprocess.check_output([executable, '--version'], text=True).strip())
+          subprocess.run([sys.executable, '-m', 'playwright', '--version'], check=True)
           with sync_playwright() as playwright:
               assert playwright.chromium.name == 'chromium'
           PY
