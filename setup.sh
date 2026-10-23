@@ -8,7 +8,8 @@ echo "[*] Initializing SQLi-Universal Agent Setup..."
 
 # 1. System Dependencies
 echo "[*] Updating system and installing base dependencies..."
-sudo apt update && sudo apt install -y python3-venv git curl
+sudo apt update && sudo apt install -y python3-venv git curl ca-certificates
+sudo update-ca-certificates
 
 echo "[*] Installing production-grade sqlmap..."
 sudo apt remove -y sqlmap
