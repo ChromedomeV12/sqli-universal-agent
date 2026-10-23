@@ -44,6 +44,41 @@ A high-performance, multi-agent security audit framework for SQL injection, buil
     export TARGET_IP="172.18.0.1"
     ```
 
+## Node.js and certificate updates (October 2026)
+
+The filesystem MCP entries in `opencode.json` and `.opencode/config.json` launch
+`npx @modelcontextprotocol/server-filesystem` using the host's Node.js. Use
+Node.js 24.22.1 or a later patched 24.x release before starting OpenCode or any
+Node-based CLI. The version files select 24.22.1 for compatible version managers;
+checking out this repository does not install Node.js or change an existing process.
+
+With nvm already installed, run from the repository root:
+
+```bash
+nvm install
+nvm use
+node --version
+npx --version
+```
+
+Other Node version managers should select the version in `.node-version`. Close
+and restart existing OpenCode/MCP processes after selecting the patched runtime so
+they inherit the updated PATH. Confirm `node --version` in that same launch
+terminal; a separate terminal can still have a different runtime.
+
+Existing WSL/Linux hosts must also refresh system trust and Python's bundled CA
+store before restarting:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates
+sudo update-ca-certificates
+./venv/bin/python -m pip install -r requirements.txt
+```
+
+The requirements already pin `certifi==2026.10.19`. Updating repository files does
+not update a running host. See the [eMudhra advisory](https://render.com/docs/advisory-emudhra).
+
 ## 📖 Academic Documentation
 
 Detailed research deliverables are available in the `final_deliverables/` folder:
