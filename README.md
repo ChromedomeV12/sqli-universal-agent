@@ -76,7 +76,7 @@ sudo update-ca-certificates
 ./venv/bin/python -m pip install -r requirements.txt
 ```
 
-The requirements already pin `certifi==2026.10.19`. Updating repository files does
+The requirements pin `certifi` at the current patched release. Updating repository files does
 not update a running host. See the [eMudhra advisory](https://render.com/docs/advisory-emudhra).
 
 ### Playwright's embedded Node driver
@@ -100,7 +100,7 @@ The setup script exports this override for its own browser installation; it
 cannot change the parent terminal environment. Restart MCP processes and set the
 override again in fresh terminals used for direct Playwright commands.
 
-Implementation reference: [Playwright Python 1.58.0 driver selection](https://github.com/microsoft/playwright-python/blob/v1.58.0/playwright/_impl/_driver.py).
+Implementation reference: [Playwright Python driver selection](https://github.com/microsoft/playwright-python/blob/v1.65.2/playwright/_impl/_driver.py).
 
 ## 📖 Academic Documentation
 
